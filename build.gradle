@@ -1,0 +1,54 @@
+apply plugin: 'java'
+
+project.ext {
+//    cucumberVersion = '5.0.0-RC1'
+    cucumberVersion = '4.7.4'
+}
+
+dependencies {
+    testImplementation 'io.cucumber:cucumber-java:' + cucumberVersion
+    testImplementation 'io.cucumber:cucumber-junit:' + cucumberVersion
+    testImplementation 'io.cucumber:cucumber-picocontainer:' + cucumberVersion
+    testImplementation 'de.monochromata.cucumber:reporting-plugin:4.0.7'
+    testImplementation 'org.seleniumhq.selenium:selenium-java:3.141.59'
+    testImplementation 'org.hamcrest:hamcrest-core:2.1'
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    cucumberRuntime {
+        extendsFrom testImplementation
+    }
+}
+
+def cucumberOptions = ['-p', 'pretty',
+                       '--add-plugin', 'de.monochromata.cucumber.report.PrettyReports:TestResults/Reports/cucumber-html',
+                       '-p', 'json:TestResults/Reports/cucumber-report.json',
+                       '-g', 'gradle.cucumber',
+                       '-g', 'spike.cucumber.hooks',
+                       '-g', 'spike.cucumber.driver',
+                       '-g', 'spike.cucumber.pages',
+                       '-g', 'spike.cucumber.steps',
+                       'src/test/resources/spike/cucumber',]
+
+def setParallel = "true"
+def availableThreadCount = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+def cucumberThreadsOption = ['--threads', availableThreadCount.toString()]
+
+task cucumber() {
+    dependsOn assemble, compileTestJava
+    doLast {
+        javaexec {
+            main = "io.cucumber.core.cli.Main"
+            classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
+            systemProperty "cucumber.options", System.properties.getProperty("cucumber.options")
+            systemProperty "parallel", System.properties.getProperty("parallel", setParallel)
+            systemProperties(System.properties as Map<String, ?>)
+            if (setParallel == "true") cucumberOptions.addAll(cucumberThreadsOption)
+            args = cucumberOptions
+        }
+    }
+}
