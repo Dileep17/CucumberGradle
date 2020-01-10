@@ -1,7 +1,6 @@
 apply plugin: 'java'
 
 project.ext {
-//    cucumberVersion = '5.0.0-RC1'
     cucumberVersion = '4.7.4'
 }
 
@@ -25,8 +24,8 @@ configurations {
 }
 
 def cucumberOptions = ['-p', 'pretty',
-                       '--add-plugin', 'de.monochromata.cucumber.report.PrettyReports:TestResults/Reports/cucumber-html',
-                       '-p', 'json:TestResults/Reports/cucumber-report.json',
+                       '--add-plugin', 'de.monochromata.cucumber.report.PrettyReports:build/cucumber-report/html-reports/cucumber-html',
+                       '-p', 'json:build/cucumber-report/json-report/cucumber-report.json',
                        '-g', 'gradle.cucumber',
                        '-g', 'spike.cucumber.hooks',
                        '-g', 'spike.cucumber.driver',
@@ -34,9 +33,12 @@ def cucumberOptions = ['-p', 'pretty',
                        '-g', 'spike.cucumber.steps',
                        'src/test/resources/spike/cucumber',]
 
-def setParallel = "true"
-def availableThreadCount = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
-def cucumberThreadsOption = ['--threads', availableThreadCount.toString()]
+
+def runParallel = project.properties['parallel'] ?: "false"
+def ThreadsOption = ['--threads', Runtime.runtime.availableProcessors().intdiv(2) ?: 1 as String]
+
+def tags = project.properties['tags'] ?: null
+def TagOptions = ['--tags', tags]
 
 task cucumber() {
     dependsOn assemble, compileTestJava
@@ -44,10 +46,8 @@ task cucumber() {
         javaexec {
             main = "io.cucumber.core.cli.Main"
             classpath = configurations.cucumberRuntime + sourceSets.main.output + sourceSets.test.output
-            systemProperty "cucumber.options", System.properties.getProperty("cucumber.options")
-            systemProperty "parallel", System.properties.getProperty("parallel", setParallel)
-            systemProperties(System.properties as Map<String, ?>)
-            if (setParallel == "true") cucumberOptions.addAll(cucumberThreadsOption)
+            if (runParallel == "true") cucumberOptions.addAll(ThreadsOption)
+            if (tags != null) cucumberOptions.addAll(TagOptions)
             args = cucumberOptions
         }
     }
